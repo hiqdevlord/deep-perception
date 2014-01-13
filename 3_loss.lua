@@ -5,7 +5,7 @@ require 'nn'      -- provides all sorts of loss functions
  
 
 -- 4 -class problem
-noutputs = 9
+noutputs = 5
 
 ----------------------------------------------------------------------
 print '==> define loss'
