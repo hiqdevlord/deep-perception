@@ -1,3 +1,2 @@
-data
-results
+data/*
 *.t7
