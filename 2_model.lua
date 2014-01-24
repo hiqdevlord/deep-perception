@@ -136,7 +136,7 @@ elseif  opt.mode == 'test' then
 end
 
 ----------------------------------------------------------------------
-print '==> here is the model:'
-print(model)
+--print '==> here is the model:'
+--print(model)
 
  
