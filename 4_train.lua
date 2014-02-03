@@ -7,6 +7,9 @@ require 'optim'   -- an optimization package, for online and batch methods
 	 
  -- classes
  classes = {'1','2','3','4','5','6','7','8','9'}
+ if opt.model == 'convnet_binary' then
+ 	classes = {'1', '2'}
+ end
 
  -- This matrix records the current confusion across classes
  confusion = optim.ConfusionMatrix(classes)
@@ -110,8 +113,7 @@ require 'optim'   -- an optimization package, for online and batch methods
                                -- evaluate function for complete mini batch
 			       for i = 1,#inputs do
 				  -- estimate f
-                                  print(inputs:size())
-                                  print(inputs[1]:size()) 
+                                   
 				  local output = model:forward(inputs[i])
                                     
 				  local err = criterion:forward(output, targets[i])

@@ -59,8 +59,7 @@ function test()
 
   -- next iteration:
 
-end
---[=[
+
   elseif opt.mode == 'test' then
     for t = 1,testData:size() do
       for l = 1,testData.data[t]:size(1) do
@@ -91,4 +90,3 @@ end
     torch.save(opt.network .. '_location_all.t7' , testData.locations)   
   end
 end
-]=]--
