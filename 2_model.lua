@@ -51,7 +51,7 @@ if opt.mode == 'train' or opt.mode == 'crossval' then
 		model:add(nn.Tanh())
 		model:add(nn.Linear(nstates[3], noutputs)) 
 
-	if opt.model == 'convnet_binary' then
+	elseif opt.model == 'convnet_binary' then
 
 		noutputs = 2
 
@@ -153,12 +153,12 @@ if opt.mode == 'train' or opt.mode == 'crossval' then
                 model:add(nn.Linear(64,4))
 
 	end
-elseif  opt.mode == 'test' then 
-      model = torch.load(opt.network)
+--elseif  opt.mode == 'test' then 
+  --    model = torch.load(opt.network)
 end
 
 ----------------------------------------------------------------------
---print '==> here is the model:'
---print(model)
+print '==> here is the model:'
+print(model)
 
  
