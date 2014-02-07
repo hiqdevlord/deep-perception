@@ -43,18 +43,17 @@ function _extractPatches(img, imgIndx, testScaleSize, patchSize, strideSize)
   for i = 1, img:size(2), strideSize do 
     for j = 1, img:size(3), strideSize do 
       if (i + patchSize - 1 < img:size(2)) and (j + patchSize - 1 < img:size(3)) then
-        tmData[cnt] = image.scale(img[{{},{i , i + patchSize- 1},{j , j + patchSize - 1}}], testScaleSize, testScaleSize)
-        tmLoc[cnt] = torch.DoubleTensor({i, i + patchSize - 1, j, j + patchSize - 1, 0,0,0, imgIndx})
-        -- print(tmLoc[cnt]) 
+        tmData[cnt] = image.scale(img[{{},{i , i + patchSize - 1},{j , j + patchSize - 1}}], testScaleSize, testScaleSize)
+        tmLoc[cnt] = torch.DoubleTensor({i, i + patchSize - 1, j, j + patchSize - 1, 0, 0, 0, imgIndx})  
         cnt = cnt + 1  
       end 
     end
   end  
-  local tmResult = {data = torch.DoubleTensor(cnt,3, testScaleSize, testScaleSize),
-             locations = torch.Tensor(cnt, 8)}
-  for i = 1, cnt do 
+  local tmResult = {data = torch.DoubleTensor(cnt - 1,3, testScaleSize, testScaleSize),
+             locations = torch.Tensor(cnt - 1, 8)}
+  for i = 1, cnt - 1 do 
     tmResult.locations[i] = tmLoc[i]
-    -- print(tmResult.locations[i])
+    print(tmResult.locations[i])
     tmResult.data[i] = tmData[i]
   end 
   return tmResult
@@ -84,26 +83,19 @@ end
 ----------------------------------------------------------------------------
 -- this is the function for binary classification testing the patches and also threshold them
 function _testBinaryClassifier(testData, threshValue, binaryModel)
-  print("testing ====> binary classifier")
   for l = 1,testData.data:size(1) do
      -- disp progress
+     print("testing ====> binary classifier")
      xlua.progress(l,testData.data:size(1))
      -- get new sample
      local input = testData.data[l]
      input =input:double()  
      -- test sample
      local pred = binaryModel:forward(input)
-     local tmMax = torch.max(pred)
-     local tmIndx =0
-     for im=1,pred:size(1) do 
-       if tMmax == pred[im] then
-         tmIndx = im  
-         break
-       end
-     end
-     testData.locations[l][5] = tmIndx
-     testData.locations[l][6] = tmMax 
-     if tmMax < threshValue then 
+     local tmMax, tmIndx = torch.max(pred,  1)
+     testData.locations[l][5] = tmIndx[1]
+     testData.locations[l][6] = tmMax[1] 
+     if tmMax[1] < threshValue then 
        testData.locations[l][7] = 1
      end
   end
@@ -112,74 +104,59 @@ end
 ----------------------------------------------------------------------------
 -- this is the function for convolutional classification testing the patches and also threshold them
 function _testConvnetClassifier(testData, threshValue, convnetModel)
-  print("testing ====> convolutional classifier")
   for l = 1,testData.data:size(1) do
     if (testData.locations[l][7] == 0) then
       -- disp progress
+      print("testing ====> convolutional classifier")
       xlua.progress(l,testData.data:size(1))
       -- get new sample
       local input = testData.data[l]
       input =input:double()  
       -- test sample
       local pred = binaryModel:forward(input)
-      local tmMax = torch.max(pred)
-      local tmIndx =0
-      for im=1,pred:size(1) do 
-        if tMmax == pred[im] then
-          tmIndx = im  
-          break
-        end
-      end
-      testData.locations[l][5] = tmIndx
-      testData.locations[l][6] = tmMax 
-      if tmMax < threshValue then 
+      local tmMax, tmIndx = torch.max(pred, 1)
+      testData.locations[l][5] = tmIndx[1]
+      testData.locations[l][6] = tmMax[1] 
+      if tmMax[1] < threshValue then 
         testData.locations[l][7] = 1
       end
     end
   end
   return testData
 end
-
---------------------------------------------------------------------------------
--- Convert the result from the classfier to the kitti datatype
-
-_typeTable = {
-  'Car',
-  'Van',
-  'Tram',
-  'Cyclist',
-  'Pedestrian',
-  'Person_sitting',
-  'Misc',
-  'Truck',
-  'DontCare'
-}
-
-function convert_to_kitti(locations)
-  labels = {{}}
-  for i=1,locations:size(1) do
-    if locations[i][7] == 0 then -- Only insert non thresholded images
-      kitti_label = {
-        x1=locations[i][1],
-        x2=locations[i][2],
-        y1=locations[i][3],
-        y2=locations[i][4],
-        type=_typeTable[3],
-        score=locations[i][6]
-        img=locations[i][8]
-      }
-      table.insert(labels,kitti_label)
-    end
+---------------------------------- create objects for nonMaximum supression------
+function _createObjectsTable(locations, imgIndx)
+  local _typeTable = {
+    'Car',
+    'Van',
+    'Tram',
+    'Cyclist',
+    'Pedestrian',
+    'Person_sitting',
+    'Misc',
+    'Truck',
+    'DontCare'
+  }
+ local objects = {}
+  for i = 1, locations:size(1) do
+    local object = {imgNum = -1, x1 = -1, x2 = -1, y1 = -1, y2 = -1, score = -1, type = -1, threshold = 0}
+    object.imgNum = locations[i][8] 
+    object.y1 = locations[i][1]
+    object.y2 = locations[i][2]
+    object.x1 = locations[i][3]
+    object.x2 = locations[i][4]
+    object.type = _typeTable[locations[i][5]]
+    object.score = locations[i][6]
+    object.threshold = locations[i][7]
+    table.insert(objects, object)
+    print(object)
+    print(locations[i])
   end
-  return labels
-end
-
---[1] = image index 
---[2][1:4] patch location
---[2][5] predicted label
---[2][6] prediction value 
---[2][7] ? 1 = thresholded(omitted) , 0 = not thresholded
-
+  if table.getn(objects) > 0 then  
+    objectsNew = nonmaxima_suppression(objects)
+    write_labels('results/test', imgIndx, objectsNew)
+  end
+end 
 ----------------------------------------------------------------------------
 --[=[cmd = torch.CmdLine()
 -- test mode data setting 
@@ -199,29 +176,30 @@ cmd:option('-imgFilePath', 'data/images/testing/image_2',' path for loading test
 opt = opt or cmd:parse(arg or {})
 ]=]--
 ---- load models 
+dofile 'lib/kitti_tools.lua'
 binaryModel = torch.load(opt.binaryModel)
 convnetModel = torch.load(opt.convnetModel)
 binaryThresh = opt.binaryThresh
 convnetThresh = opt.convnetThresh
 -----
--- this is function for computing the location number for all patch size of all images
-local allLocCnt = _computeTensorSize(opt.indxS, opt.indxE, opt.initPatchSize
-                                   , opt.patchFactor, opt.strideFactor, opt.imgFilePath)
 --- ofter testing an image only store the neccessary information
---[1] = image index 
+--[1] = patch index number
+--[2][8] = image index 
 --[2][1:4] patch location
 --[2][5] predicted label
 --[2][6] prediction value 
 --[2][7] ? 1 = thresholded(omitted) , 0 = not thresholded
-testData = {locations = torch.Tensor(allLocCnt, 8)}
-kittiData = {}
-                  --data = torch.DoubleTensor(opt.indxE - opt.indxS + 1, 1, 3, patch_w, patch_h),
-local locIndx = 1 -- the index to latest extracted location orverall 
 local mean = torch.load(opt.mean)
 local std = torch.load(opt.std)
+for imgIndx = opt.indxS, opt.indxE do 
+  
+  -- this is function for computing the location number for all patch size of all images
+  local allLocCnt = _computeTensorSize(imgIndx, imgIndx, opt.initPatchSize
+                                   , opt.patchFactor, opt.strideFactor, opt.imgFilePath)
+  local testData = {locations = torch.Tensor(allLocCnt, 8)}
 
-print('Read images')
-for imgIndx = opt.indxS, opt.indxE do
+  local locIndx = 0 -- the index to latest extracted location orverall 
+  print('Read images')
   xlua.progress(imgIndx, opt.indxE - opt.indxS +1)
   local img = read_image(opt.imgFilePath, imgIndx)
   local imgMinSize = img:size(2)
@@ -236,10 +214,10 @@ for imgIndx = opt.indxS, opt.indxE do
     if (patchSize == 0) then  
       patchSize = opt.initPatchSize
     end
-    -- print(tostring(patchSize) .. " * " .. tostring(patchSize))
+    print(tostring(patchSize) .. " * " .. tostring(patchSize))
     local strideSize = patchSize * opt.strideFactor
  
-    local tmTestData =  _extractPatches(img,imgIndx, opt.testScaleSize, patchSize, strideSize) ---extract all patches 
+    local tmTestData =  _extractPatches(img, imgIndx, opt.testScaleSize, patchSize, strideSize) ---extract all patches 
  
     tmTestData = _normalizeTestData(tmTestData, mean, std, channels)
   
@@ -251,15 +229,10 @@ for imgIndx = opt.indxS, opt.indxE do
       tmTestData = _testConvnetClassifier(tmTestData, convnetThresh, convnetModel)
     end 
  
-    for i = 1, tmTestData.locations:size(1) do 
+    for i = 1 , tmTestData.locations:size(1)  do
       testData.locations[i + locIndx] = tmTestData.locations[i]---copy  testing results
-    end
-    
+    end  
+    locIndx = locIndx + tmTestData.locations:size(1)  
   end --- end while
+  _createObjectsTable(testData.locations, imgIndx)
 end -- end main for loop
-table.insert(kittiData, nonmaxima_suppression(convert_to_kitti(testData.locations)))
-print('kitti_test' .. tostring(opt.indxS) .. '_' .. tostring(opt.indxE) ..'_' .. tostring(patchSize) .. '.t7')
-torch.save('kitti_test' .. '_' .. tostring(opt.indxS) .. '_' .. tostring(opt.indxE) .. 't7', testData)
-for name, labels in pairs(kittiData) do
-  write_labels('/tmp', name, labels)
-end
