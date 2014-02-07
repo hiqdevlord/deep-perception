@@ -139,18 +139,18 @@ function _createObjectsTable(locations, imgIndx)
   }
  local objects = {}
   for i = 1, locations:size(1) do
-    local object = {imgNum = -1, x1 = -1, x2 = -1, y1 = -1, y2 = -1, score = -1, type = -1, threshold = 0}
-    object.imgNum = locations[i][8] 
-    object.y1 = locations[i][1]
-    object.y2 = locations[i][2]
-    object.x1 = locations[i][3]
-    object.x2 = locations[i][4]
-    object.type = _typeTable[locations[i][5]]
-    object.score = locations[i][6]
-    object.threshold = locations[i][7]
-    table.insert(objects, object)
-    print(object)
-    print(locations[i])
+    if (testData.locations[l][7] == 0) then
+      local object = {imgNum = -1, x1 = -1, x2 = -1, y1 = -1, y2 = -1, score = -1, type = -1, threshold = 0}
+      object.imgNum = locations[i][8] 
+      object.y1 = locations[i][1]
+      object.y2 = locations[i][2]
+      object.x1 = locations[i][3]
+      object.x2 = locations[i][4]
+      object.type = _typeTable[locations[i][5]]
+      object.score = locations[i][6]
+      object.threshold = locations[i][7]
+      table.insert(objects, object)
+    end
   end
   if table.getn(objects) > 0 then  
     objectsNew = nonmaxima_suppression(objects)
@@ -182,6 +182,9 @@ convnetModel = torch.load(opt.convnetModel)
 binaryThresh = opt.binaryThresh
 convnetThresh = opt.convnetThresh
 -----
+-- this is function for computing the location number for all patch size of all images
+local allLocCnt = _computeTensorSize(opt.indxS, opt.indxE, opt.initPatchSize
+                                   , opt.patchFactor, opt.strideFactor, opt.imgFilePath)
 --- ofter testing an image only store the neccessary information
 --[1] = patch index number
 --[2][8] = image index 
@@ -189,6 +192,9 @@ convnetThresh = opt.convnetThresh
 --[2][5] predicted label
 --[2][6] prediction value 
 --[2][7] ? 1 = thresholded(omitted) , 0 = not thresholded
+local testData = {locations = torch.Tensor(allLocCnt, 7)}
+                  --data = torch.DoubleTensor(opt.indxE - opt.indxS + 1, 1, 3, patch_w, patch_h),
+local locIndx = 1 -- the index to latest extracted location orverall 
 local mean = torch.load(opt.mean)
 local std = torch.load(opt.std)
 for imgIndx = opt.indxS, opt.indxE do 
@@ -236,3 +242,5 @@ for imgIndx = opt.indxS, opt.indxE do
   end --- end while
   _createObjectsTable(testData.locations, imgIndx)
 end -- end main for loop
+print('kitti_test' .. tostring(opt.indxS) .. '_' .. tostring(opt.indxE) ..'_' .. tostring(patchSize) .. '.t7')
+torch.save('kitti_test' .. '_' .. tostring(opt.indxS) .. '_' .. tostring(opt.indxE) .. 't7', testData)
