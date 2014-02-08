@@ -4,8 +4,8 @@ require 'nn'      -- provides all sorts of loss functions
 ----------------------------------------------------------------------
  
 
--- 8-class problem
-noutputs = 8
+-- 9-class problem
+noutputs = 9
 
 -- For the binary classifier we only have object and none patches
 if opt.model == 'convnet_binary' then
