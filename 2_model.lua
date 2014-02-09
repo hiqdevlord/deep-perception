@@ -8,10 +8,10 @@ require 'optim'
 print '==> define parameters'
 
 -- 4-class problem
-noutputs = 8
+noutputs = 9
 
 -- input dimensions
-nfeats = #channels
+nfeats = 3
 width = 32
 height = 32
 ninputs = nfeats*width*height
