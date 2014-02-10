@@ -8,10 +8,10 @@ require 'optim'
 print '==> define parameters'
 
 -- 4-class problem
-noutputs = 8
+noutputs = 9
 
 -- input dimensions
-nfeats = #channels
+nfeats = 3
 width = 32
 height = 32
 ninputs = nfeats*width*height
@@ -77,8 +77,8 @@ if opt.mode == 'train' or opt.mode == 'crossval' then
 	elseif opt.model then
 		model = torch.load(opt.model)
 	end
-elseif  opt.mode == 'valid' then 
-      model = torch.load(opt.multinet)
+--elseif  opt.mode == 'test' then 
+  --    model = torch.load(opt.network)
 end
 
 ----------------------------------------------------------------------

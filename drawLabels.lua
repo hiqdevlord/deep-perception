@@ -1,13 +1,14 @@
 require 'lib/kitti_tools'
 require 'image'
 
+cmd = torch.CmdLine()
 
-if #arg ~= 2 then
-  print('Usage: drawLabels')
-end
+cmd:option('-image', '1', 'Image to draw the labels in')
 
-i = read_image('data/images/testing/image_2', arg[1])
-l = read_labels('results/test', arg[1])
+opt = cmd:parse(arg or {})
+
+i = read_image('data/images/testing/image_2', opt.image)
+l = read_labels('results/test', opt.image)
 j = add_labels_to_image(i, l, colormap_kitti)
 image.display(j)
 
